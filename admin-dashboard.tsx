@@ -12,10 +12,12 @@ import {
   Command,
   Cpu,
   Database,
+  DollarSign,
   Download,
   Globe,
   HardDrive,
   Hexagon,
+  PieChart,
   LineChart,
   Lock,
   type LucideIcon,
@@ -252,6 +254,14 @@ export default function AdminDashboard() {
                     <NavItem icon={Terminal} label="Teacher Usage" href="/dashboard/admin/analytics/teachers" />
                     <NavItem icon={Terminal} label="School-wide Reports" href="/dashboard/admin/analytics/schools" />
                     <NavItem icon={Terminal} label="AI Efficiency" href="/dashboard/admin/analytics/ai-efficiency" />
+                  </NavGroup>
+                  {/* Finance */}
+                  <NavGroup label="Finance">
+                    <NavItem icon={DollarSign} label="Deposit" href="/dashboard/admin/finance/deposit" />
+                    <NavItem icon={DollarSign} label="Withdraw" href="/dashboard/admin/finance/withdraw" />
+                    <NavItem icon={Lock} label="Card" href="/dashboard/admin/finance/card" />
+                    <NavItem icon={PieChart} label="Profit" href="/dashboard/admin/finance/profit" />
+                    <NavItem icon={BarChart3} label="Transactions" href="/dashboard/admin/finance/transactions" />
                   </NavGroup>
                   {/* Community */}
                   <NavGroup label="Community">

@@ -10,9 +10,12 @@ export default function ProfileSettingsPage() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [avatar, setAvatar] = useState("")
   const [displayName, setDisplayName] = useState("")
+  const [handle, setHandle] = useState("")
   const [blockTagging, setBlockTagging] = useState(false)
   const [requireGroupConsent, setRequireGroupConsent] = useState(true)
   const [password, setPassword] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userId) return
@@ -22,16 +25,46 @@ export default function ProfileSettingsPage() {
     setDisplayName(p.displayName ?? "")
     setBlockTagging(p.social.blockTagging)
     setRequireGroupConsent(p.social.requireGroupConsent)
+
+    // Fetch existing directory info from backend (display_name/handle)
+    fetch("/api/user/directory", { headers: { "x-user-id": userId } })
+      .then(async (r) => r.json())
+      .then((res) => {
+        if (res?.user) {
+          if (res.user.display_name) setDisplayName(res.user.display_name)
+          if (res.user.handle) setHandle(res.user.handle)
+        }
+      })
+      .catch(() => {})
   }, [userId])
 
-  function onSave() {
+  async function onSave() {
     if (!userId) return
-    const next = updateProfile(userId, {
-      avatarUrl: avatar || undefined,
-      displayName: displayName || undefined,
-      social: { blockTagging, requireGroupConsent },
-    })
-    setProfile(next)
+    setSaving(true)
+    setStatus(null)
+    try {
+      // Update user_directory display_name (and handle if provided)
+      const res = await fetch("/api/user/directory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-user-id": userId },
+        body: JSON.stringify({ displayName, handle: handle || undefined }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to update profile")
+
+      // Keep local profile store for avatar and social prefs
+      const next = updateProfile(userId, {
+        avatarUrl: avatar || undefined,
+        displayName: displayName || undefined,
+        social: { blockTagging, requireGroupConsent },
+      })
+      setProfile(next)
+      setStatus("Saved")
+    } catch (e: any) {
+      setStatus(e.message || "Save failed")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -44,6 +77,11 @@ export default function ProfileSettingsPage() {
           <section className="bg-slate-900/50 border border-slate-800 rounded-lg p-4">
             <h2 className="font-semibold">Profile</h2>
             <div className="mt-4 space-y-3 text-sm">
+              <div>
+                <div className="text-slate-300 mb-1">Handle</div>
+                <input value={handle} onChange={(e)=>setHandle(e.target.value)} placeholder="e.g. alex" className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2" />
+                <div className="text-xs text-slate-500 mt-1">Lowercase letters, numbers, underscore. Shown as @handle.</div>
+              </div>
               <div>
                 <div className="text-slate-300 mb-1">Display Name</div>
                 <input value={displayName} onChange={(e)=>setDisplayName(e.target.value)} placeholder="e.g. Alex" className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2" />
@@ -79,8 +117,9 @@ export default function ProfileSettingsPage() {
           </section>
         </div>
 
-        <div className="mt-4">
-          <button onClick={onSave} className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-700">Save Changes</button>
+        <div className="mt-4 flex items-center gap-3">
+          <button onClick={onSave} disabled={saving} className="px-4 py-2 rounded bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50">{saving ? "Saving..." : "Save Changes"}</button>
+          {status && <span className="text-sm text-slate-400">{status}</span>}
         </div>
       </main>
     </MockRoleGuard>

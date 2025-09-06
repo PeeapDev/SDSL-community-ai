@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { MockAuthProvider } from '@/components/providers/MockAuthProvider'
+import BackButton from '@/components/ui/BackButton'
 
 export const metadata: Metadata = {
   title: 'v0 App',
@@ -29,6 +30,10 @@ html {
       </head>
       <body>
         <MockAuthProvider>
+          {/* Global Back button shown on all pages */}
+          <div className="fixed top-4 left-4 z-50">
+            <BackButton />
+          </div>
           {children}
         </MockAuthProvider>
         <Analytics />

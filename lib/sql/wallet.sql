@@ -1,6 +1,9 @@
 -- Internal wallet schema and RPC for atomic transfers
 -- Run this in Supabase SQL Editor
 
+-- Ensure pgcrypto is available for gen_random_uuid()
+create extension if not exists pgcrypto;
+
 create table if not exists wallets (
   user_id text primary key,
   available_cents bigint not null default 0,
@@ -121,14 +124,20 @@ alter table wallets enable row level security;
 alter table ledger_entries enable row level security;
 alter table transfers enable row level security;
 
-create policy if not exists "read_own_wallet" on wallets
-  for select using (auth.uid()::text = user_id);
+drop policy if exists "read_own_wallet" on wallets;
+create policy "read_own_wallet" on wallets
+  for select
+  using (auth.uid()::text = user_id);
 
-create policy if not exists "read_own_ledger" on ledger_entries
-  for select using (auth.uid()::text = user_id);
+drop policy if exists "read_own_ledger" on ledger_entries;
+create policy "read_own_ledger" on ledger_entries
+  for select
+  using (auth.uid()::text = user_id);
 
-create policy if not exists "read_related_transfers" on transfers
-  for select using (auth.uid()::text in (from_user_id, to_user_id));
+drop policy if exists "read_related_transfers" on transfers;
+create policy "read_related_transfers" on transfers
+  for select
+  using (auth.uid()::text in (from_user_id, to_user_id));
 
 -- Role mapping and limits for admin control
 create table if not exists user_roles (
@@ -198,8 +207,8 @@ create table if not exists user_directory (
   updated_at timestamptz not null default now()
 );
 
-create index if not exists idx_user_directory_handle on user_directory(lower(handle));
-create index if not exists idx_user_directory_phone on user_directory(phone);
+create index if not exists idx_user_directory_handle on public.user_directory(lower(handle));
+create index if not exists idx_user_directory_phone on public.user_directory(phone);
 
 -- Optional: trigger to maintain updated_at
 create or replace function touch_user_directory()
@@ -212,3 +221,188 @@ end;$$;
 drop trigger if exists trg_touch_user_directory on user_directory;
 create trigger trg_touch_user_directory before update on user_directory
 for each row execute function touch_user_directory();
+
+-- =====================================================================
+-- Chrome Extension Integration (registry, installs, permissions, intents)
+-- =====================================================================
+
+-- Registry of extension clients that integrate with this backend
+create table if not exists extension_clients (
+  id uuid primary key default gen_random_uuid(),
+  code text unique not null,               -- e.g. "sdsl-pay"
+  name text not null,
+  created_at timestamptz not null default now()
+);
+
+-- Per-user extension installations
+create table if not exists extension_installations (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  extension_code text not null references extension_clients(code) on delete cascade,
+  installed_at timestamptz not null default now(),
+  unique(user_id, extension_code)
+);
+create index if not exists idx_ext_installs_user on extension_installations(user_id);
+create index if not exists idx_ext_installs_code on extension_installations(extension_code);
+
+-- Site permissions granted by the user to the extension
+create table if not exists site_permissions (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  origin text not null,                   -- e.g. "https://example.com"
+  permission text not null check (permission in ('dom_read','dom_write','payments')),
+  granted boolean not null default true,
+  updated_at timestamptz not null default now(),
+  unique(user_id, origin, permission)
+);
+create index if not exists idx_site_perms_user on site_permissions(user_id);
+create index if not exists idx_site_perms_origin on site_permissions(origin);
+
+-- Payment intents initiated from extension (or web) before final wallet transfer
+create table if not exists payment_intents (
+  id uuid primary key default gen_random_uuid(),
+  from_user_id text not null,              -- payer
+  to_user_id text not null,                -- payee (resolved from handle/phone)
+  amount_cents bigint not null,
+  currency text not null default 'USD',
+  status text not null check (status in ('requires_confirmation','processing','succeeded','canceled','failed')) default 'requires_confirmation',
+  origin text,                             -- site origin that initiated the intent
+  extension_code text references extension_clients(code) on delete set null,
+  correlation_id text,                     -- for idempotency
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_payment_intents_from on payment_intents(from_user_id, created_at desc);
+create index if not exists idx_payment_intents_to on payment_intents(to_user_id, created_at desc);
+create index if not exists idx_payment_intents_status on payment_intents(status);
+
+-- Optional: trigger to maintain updated_at
+create or replace function touch_payment_intents()
+returns trigger language plpgsql as $$
+begin
+  new.updated_at := now();
+  return new;
+end;$$;
+
+drop trigger if exists trg_touch_payment_intents on payment_intents;
+create trigger trg_touch_payment_intents before update on payment_intents
+for each row execute function touch_payment_intents();
+
+-- Event log for intents and extension actions
+create table if not exists payment_events (
+  id uuid primary key default gen_random_uuid(),
+  intent_id uuid references payment_intents(id) on delete cascade,
+  type text not null,                      -- e.g. 'created','confirmed','succeeded','failed'
+  data jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_payment_events_intent on payment_events(intent_id, created_at desc);
+
+-- Optional DOM access audit
+create table if not exists dom_access_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id text,
+  origin text,
+  action text not null,                    -- e.g. 'read','write'
+  details jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_dom_logs_user on dom_access_logs(user_id, created_at desc);
+create index if not exists idx_dom_logs_origin on dom_access_logs(origin, created_at desc);
+
+-- Enable RLS for read safety (writes via service role)
+alter table extension_clients enable row level security;
+alter table extension_installations enable row level security;
+alter table site_permissions enable row level security;
+alter table payment_intents enable row level security;
+alter table payment_events enable row level security;
+alter table dom_access_logs enable row level security;
+
+-- Read policies
+drop policy if exists "read_own_installs" on extension_installations;
+create policy "read_own_installs" on extension_installations for select using (auth.uid()::text = user_id);
+
+drop policy if exists "read_own_site_perms" on site_permissions;
+create policy "read_own_site_perms" on site_permissions for select using (auth.uid()::text = user_id);
+
+drop policy if exists "read_own_payment_intents" on payment_intents;
+create policy "read_own_payment_intents" on payment_intents for select using (auth.uid()::text in (from_user_id, to_user_id));
+
+drop policy if exists "read_own_payment_events" on payment_events;
+create policy "read_own_payment_events" on payment_events for select using (exists (
+  select 1 from payment_intents pi where pi.id = intent_id and auth.uid()::text in (pi.from_user_id, pi.to_user_id)
+));
+
+drop policy if exists "read_own_dom_logs" on dom_access_logs;
+create policy "read_own_dom_logs" on dom_access_logs for select using (auth.uid()::text = user_id);
+
+-- =====================================================================
+-- Admin additions: optional user directory fields
+-- =====================================================================
+alter table user_directory
+  add column if not exists gender text check (gender in ('male','female','other'));
+
+alter table user_directory
+  add column if not exists blocked boolean not null default false;
+
+-- Optional: inline role on user_directory for convenience/admin UI
+alter table user_directory
+  add column if not exists role text check (role in ('student','teacher','vendor','admin'));
+
+-- Optional one-time backfill from user_roles if present
+update user_directory ud
+set role = ur.role
+from user_roles ur
+where ur.user_id = ud.user_id and (ud.role is null or ud.role <> ur.role);
+
+-- =====================================================================
+-- Extended user profile fields (common across roles; school_name optional for vendor)
+-- =====================================================================
+alter table user_directory
+  add column if not exists first_name text;
+
+alter table user_directory
+  add column if not exists last_name text;
+
+alter table user_directory
+  add column if not exists school_name text; -- students/teachers primarily
+
+alter table user_directory
+  add column if not exists country text;
+
+alter table user_directory
+  add column if not exists account_number text;
+create index if not exists idx_user_directory_account on user_directory(account_number);
+
+alter table user_directory
+  add column if not exists dob date;
+
+alter table user_directory
+  add column if not exists profile_image_url text;
+
+-- Email is primarily managed by Supabase auth, but optionally cached here for admin UI
+alter table user_directory
+  add column if not exists email text;
+create index if not exists idx_user_directory_email on user_directory(lower(email));
+
+-- Transaction PIN storage (store only hashed values; never plaintext)
+alter table user_directory
+  add column if not exists pin_hash text; -- format: v1$<salt_b64>$<hash_b64>
+
+-- Optional QR secret (if we decide to encode a secret instead of user_id directly)
+alter table user_directory
+  add column if not exists qr_secret text;
+create index if not exists idx_user_directory_qr on user_directory(qr_secret);
+
+-- =====================================================================
+-- Closed-loop NFC card registry for tap-to-pay
+-- =====================================================================
+create table if not exists nfc_cards (
+  card_uid text primary key,            -- unique NFC UID or tokenized ID
+  user_id text references user_directory(user_id) on delete set null,
+  active boolean not null default true,
+  issued_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+create index if not exists idx_nfc_cards_user on nfc_cards(user_id);
