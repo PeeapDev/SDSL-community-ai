@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
 import { z } from "zod"
 import { getAdminSupabase } from "@/lib/supabaseServer"
 import { verifyPin } from "@/lib/security"
