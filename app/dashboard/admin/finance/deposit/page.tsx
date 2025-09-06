@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useMockAuth } from "@/components/providers/MockAuthProvider"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -70,22 +69,21 @@ export default function AdminFinanceDepositPage() {
   }
 
   return (
-    <MockRoleGuard allow={["admin"]}>
-      <div className="container mx-auto p-6">
-        <Card className="max-w-2xl mx-auto">
-          <CardHeader>
-            <CardTitle>Admin Deposit</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex gap-2">
-              <Input placeholder="@alice or +15551234567 or user_id" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
-              <Button variant="secondary" onClick={handleResolve}>Resolve</Button>
+    <div className="max-w-2xl mx-auto">
+      <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle>Admin Deposit</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex gap-2">
+            <Input placeholder="@alice or +15551234567 or user_id" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+            <Button variant="secondary" onClick={handleResolve}>Resolve</Button>
+          </div>
+          {resolved && (
+            <div className="text-sm text-slate-500">
+              Target: <Badge variant="outline">{resolved.display_name || resolved.handle || resolved.user_id}</Badge>
             </div>
-            {resolved && (
-              <div className="text-sm text-slate-500">
-                Target: <Badge variant="outline">{resolved.display_name || resolved.handle || resolved.user_id}</Badge>
-              </div>
-            )}
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Amount (USD)</Label>
@@ -104,7 +102,6 @@ export default function AdminFinanceDepositPage() {
           </div>
         </CardContent>
       </Card>
-      </div>
-    </MockRoleGuard>
+    </div>
   )
 }

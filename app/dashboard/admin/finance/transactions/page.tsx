@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { useMockAuth } from "@/components/providers/MockAuthProvider"
@@ -53,26 +52,25 @@ export default function AdminTransactionsPage() {
   }, [days])
 
   return (
-    <MockRoleGuard allow={["admin"]}>
-      <div className="container mx-auto p-6">
-        <Card className="mx-auto">
-          <CardHeader>
-            <CardTitle>Transactions by Gender</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Label>Window (days)</Label>
-              <div className="flex gap-2">
-                {[7, 14, 30, 90].map((d) => (
-                  <Button key={d} variant={d === days ? "default" : "outline"} size="sm" onClick={() => setDays(d)}>
-                    {d}d
-                  </Button>
-                ))}
-              </div>
-              <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
-                {loading ? "Refreshing..." : "Refresh"}
-              </Button>
+    <div className="max-w-3xl mx-auto">
+      <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle>Transactions by Gender</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-3">
+            <Label>Window (days)</Label>
+            <div className="flex gap-2">
+              {[7, 14, 30, 90].map((d) => (
+                <Button key={d} variant={d === days ? "default" : "outline"} size="sm" onClick={() => setDays(d)}>
+                  {d}d
+                </Button>
+              ))}
             </div>
+            <Button variant="ghost" size="sm" onClick={load} disabled={loading}>
+              {loading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
 
           {error && <div className="text-sm text-red-500">{error}</div>}
 
@@ -97,7 +95,6 @@ export default function AdminTransactionsPage() {
           )}
         </CardContent>
       </Card>
-      </div>
-    </MockRoleGuard>
+    </div>
   )
 }

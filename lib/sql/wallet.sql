@@ -406,3 +406,19 @@ create table if not exists nfc_cards (
   revoked_at timestamptz
 );
 create index if not exists idx_nfc_cards_user on nfc_cards(user_id);
+
+-- =====================================================================
+-- NFC card request workflow (users request cards; admin approves & issues)
+-- =====================================================================
+create table if not exists nfc_card_requests (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null references user_directory(user_id) on delete cascade,
+  role text check (role in ('student','teacher','vendor','admin')),
+  status text not null check (status in ('pending','approved','rejected')) default 'pending',
+  requested_at timestamptz not null default now(),
+  approved_at timestamptz,
+  approved_by text, -- admin user_id or email reference
+  card_uid text,    -- filled when approved and issued
+  nfc_link text     -- generated link text to embed on physical NFC card
+);
+create index if not exists idx_nfc_card_req_user on nfc_card_requests(user_id, requested_at desc);

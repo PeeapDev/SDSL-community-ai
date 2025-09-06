@@ -26,6 +26,7 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
     { label: "Overview", href: "/dashboard/vendor" },
     { label: "Products", href: "/dashboard/vendor/products" },
     { label: "Analytics", href: "/dashboard/vendor/analytics" },
+    { label: "Card", href: "/dashboard/vendor/card" },
     { label: "__WALLET_GROUP__" },
     { label: "Shop Setup", href: "/dashboard/vendor/shop" },
     { label: "Chat", href: "/dashboard/vendor/chat" },

@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { MockRoleGuard } from "@/components/layouts/MockRoleGuard"
 
 export default function AdminCardPage() {
   return (
-    <MockRoleGuard allowedRoles={["admin"]}>
-      <Card className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
+      <Card className="bg-slate-900/50 border-slate-700/50 backdrop-blur-sm">
         <CardHeader>
           <CardTitle>Admin • Card Management</CardTitle>
         </CardHeader>
@@ -19,7 +18,7 @@ export default function AdminCardPage() {
           <CardManager />
         </CardContent>
       </Card>
-    </MockRoleGuard>
+    </div>
   )
 }
 
@@ -31,6 +30,43 @@ function CardManager() {
   const [cardUid, setCardUid] = useState("")
   const [cards, setCards] = useState<Array<{ card_uid: string; active: boolean; issued_at: string | null; revoked_at: string | null }>>([])
   const [loading, setLoading] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [pending, setPending] = useState<Array<{ id: string; user_id: string; role: string | null; requested_at: string }>>([])
+  const [approveUid, setApproveUid] = useState<string>("")
+
+  async function fetchQr(idOrIdentifier?: string) {
+    const idq = idOrIdentifier || resolved?.user_id || identifier
+    if (!idq) return
+    const p = new URLSearchParams({ identifier: idq }).toString()
+    const res = await fetch(`/api/qr?${p}`)
+    const json = await res.json()
+    if (res.ok) setQrDataUrl(json.dataUrl)
+  }
+
+  async function loadPending() {
+    const res = await fetch(`/api/admin/cards/requests/list`, { headers: { "x-user-role": "admin" } })
+    const json = await res.json()
+    if (res.ok) setPending((json.requests || []).map((r: any)=>({ id: r.id, user_id: r.user_id, role: r.role, requested_at: r.requested_at })))
+  }
+
+  async function approveRequest(reqId: string) {
+    if (!approveUid) return toast({ description: "Enter a card UID to issue" })
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/cards/requests/approve`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-user-role": "admin" },
+        body: JSON.stringify({ requestId: reqId, cardUid: approveUid, approvedBy: "admin" })
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || "Approve failed")
+      toast({ description: `Approved and issued ${approveUid}` })
+      setApproveUid("")
+      await loadPending()
+    } catch (e: any) {
+      toast({ description: e.message || "Approve error" })
+    } finally { setLoading(false) }
+  }
 
   async function resolveUser() {
     setLoading(true)
@@ -41,6 +77,7 @@ function CardManager() {
       setResolved(json.user)
       toast({ description: `Resolved user ${json.user.user_id}` })
       await refreshCards(json.user.user_id)
+      await fetchQr(json.user.user_id)
     } catch (e: any) {
       toast({ description: e.message || "Resolve error" })
     } finally {
@@ -131,6 +168,10 @@ function CardManager() {
         {resolved && (
           <div className="text-sm text-muted-foreground">Resolved: {resolved.user_id}</div>
         )}
+        <div className="flex items-center gap-4 mt-2">
+          <Button variant="outline" size="sm" onClick={()=>fetchQr()} disabled={!resolved}>Refresh QR</Button>
+          {qrDataUrl && <img src={qrDataUrl} alt="QR" className="h-28 w-28 border rounded" />}
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -162,6 +203,28 @@ function CardManager() {
               {c.active && (
                 <Button variant="outline" size="sm" onClick={() => unlinkCard(c.card_uid)} disabled={loading}>Unlink</Button>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="pt-4 border-t">
+        <div className="flex items-center justify-between mb-2">
+          <Label>Pending Card Requests</Label>
+          <div className="flex gap-2 items-center">
+            <Input placeholder="Card UID to issue" value={approveUid} onChange={(e)=>setApproveUid(e.target.value)} className="h-8 w-48" />
+            <Button variant="outline" size="sm" onClick={loadPending}>Refresh</Button>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {pending.length === 0 && <div className="text-sm text-muted-foreground">No pending requests.</div>}
+          {pending.map(r => (
+            <div key={r.id} className="flex items-center justify-between border rounded-md p-2 text-sm">
+              <div>
+                <div>Request: <span className="font-mono">{r.id}</span></div>
+                <div className="text-xs text-muted-foreground">User: {r.user_id} • Role: {r.role || '-'} • {new Date(r.requested_at).toLocaleString()}</div>
+              </div>
+              <Button size="sm" onClick={()=>approveRequest(r.id)} disabled={!approveUid || loading}>Approve & Issue</Button>
             </div>
           ))}
         </div>

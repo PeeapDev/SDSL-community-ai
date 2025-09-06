@@ -205,6 +205,7 @@ export default function TeacherDashboard() {
                       <Link href="/dashboard/teacher/wallet?tab=send" className="block text-sm text-slate-300 hover:text-white px-2 py-1 rounded hover:bg-slate-800/60">Send</Link>
                       <Link href="/dashboard/teacher/wallet?tab=receive" className="block text-sm text-slate-300 hover:text-white px-2 py-1 rounded hover:bg-slate-800/60">Receive</Link>
                       <Link href="/dashboard/teacher/wallet?tab=transactions" className="block text-sm text-slate-300 hover:text-white px-2 py-1 rounded hover:bg-slate-800/60">Transactions</Link>
+                      <Link href="/dashboard/teacher/card" className="block text-sm text-slate-300 hover:text-white px-2 py-1 rounded hover:bg-slate-800/60">Card</Link>
                     </div>
                   )}
                 </nav>
