@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { useMockAuth } from "@/components/providers/MockAuthProvider"
 import { acceptFriendRequest, denyFriendRequest, listFriendRequests, listFriends, sendFriendRequest, type Friendship } from "@/lib/communitySocialStore"
 import { getUserById, getUserByUsername, searchUsersByUsername } from "@/lib/mockUsers"
@@ -31,8 +30,7 @@ export default function AdminCommunityFriendsPage() {
   }
 
   return (
-    <MockRoleGuard allow={["admin","teacher","student"]}>
-      <main className="min-h-screen bg-gradient-to-b from-black via-slate-900 to-slate-950 text-slate-100 p-6">
+      <main className="p-6">
         <h1 className="text-2xl font-bold">Community — Friends</h1>
         <p className="text-slate-400 mt-2">Manage friends and requests (client-side mock).</p>
 
@@ -103,7 +101,6 @@ export default function AdminCommunityFriendsPage() {
           </section>
         </div>
       </main>
-    </MockRoleGuard>
   )
 }
 

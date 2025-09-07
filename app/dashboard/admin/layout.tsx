@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef } from "react"
 import MockRoleGuard from "@/components/layouts/MockRoleGuard"
+import { AdminRightRailProvider, RightRailSlot } from "@/components/layouts/AdminRightRail"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -86,9 +87,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <MockRoleGuard allow={["admin"]}>
-      <div className="min-h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
-        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-30" />
-        <div className="container mx-auto p-4 relative z-10">
+      <AdminRightRailProvider>
+        <div className="min-h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
+          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-30" />
+          <div className="container mx-auto p-4 relative z-10">
           {/* Header (condensed) */}
           <header className="flex items-center justify-between py-4 border-b border-slate-700/50 mb-6">
             <div className="flex items-center space-x-2">
@@ -158,11 +160,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {children}
             </div>
 
-            {/* Right sidebar can be left empty or host quick actions later */}
-            <div className="col-span-12 lg:col-span-3" />
+            {/* Right sidebar hosts dynamic rail content */}
+            <div className="col-span-12 lg:col-span-3">
+              <RightRailSlot />
+            </div>
           </div>
         </div>
-      </div>
+        </div>
+      </AdminRightRailProvider>
     </MockRoleGuard>
   )
 }

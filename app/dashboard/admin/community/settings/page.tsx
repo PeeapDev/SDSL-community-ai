@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { CommunitySettings, defaultSettings, getSettings, saveSettings } from "@/lib/communityStore"
 
 export default function AdminCommunitySettingsPage() {
@@ -15,8 +14,7 @@ export default function AdminCommunitySettingsPage() {
   function onReset() { const d = defaultSettings(); setS(d); saveSettings(d) }
 
   return (
-    <MockRoleGuard allow={["admin"]}>
-      <main className="min-h-screen bg-gradient-to-b from-black via-slate-900 to-slate-950 text-slate-100 p-6">
+      <main className="p-6">
         <h1 className="text-2xl font-bold">Community — Settings</h1>
         <p className="text-slate-400 mt-2">Admin settings for school community features (persisted locally).</p>
 
@@ -81,6 +79,5 @@ export default function AdminCommunitySettingsPage() {
           </section>
         </div>
       </main>
-    </MockRoleGuard>
   )
 }

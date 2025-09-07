@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { useMockAuth } from "@/components/providers/MockAuthProvider"
 import { listConversations, listMessages, sendMessageDM, type Conversation, type Message } from "@/lib/communitySocialStore"
 import { getUserById, getUserByUsername, searchUsersByUsername } from "@/lib/mockUsers"
@@ -54,8 +53,7 @@ export default function AdminCommunityMessagesPage() {
   }
 
   return (
-    <MockRoleGuard allow={["admin","teacher","student"]}>
-      <main className="min-h-screen bg-gradient-to-b from-black via-slate-900 to-slate-950 text-slate-100 p-6">
+      <main className="p-6">
         <h1 className="text-2xl font-bold">Community — Messages</h1>
         <p className="text-slate-400 mt-2">Direct messages (client-side mock). Search users by username to start a DM.</p>
 
@@ -133,7 +131,6 @@ export default function AdminCommunityMessagesPage() {
           </section>
         </div>
       </main>
-    </MockRoleGuard>
   )
 }
 

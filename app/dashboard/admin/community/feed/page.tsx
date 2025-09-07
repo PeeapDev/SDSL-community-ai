@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { useMockAuth } from "@/components/providers/MockAuthProvider"
 import { addComment, createPost, defaultSettings, getSettings, listComments, listPosts, reportPost, toggleLike, type Post } from "@/lib/communityStore"
 import { getUserById } from "@/lib/mockUsers"
@@ -97,8 +96,7 @@ export default function AdminCommunityFeedPage() {
   }
 
   return (
-    <MockRoleGuard allow={["admin","teacher","student"]}>
-      <main className="min-h-screen bg-gradient-to-b from-black via-slate-900 to-slate-950 text-slate-100 p-6">
+      <main className="p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Community — Feed</h1>
@@ -264,7 +262,6 @@ export default function AdminCommunityFeedPage() {
           </div>
         )}
       </main>
-    </MockRoleGuard>
   )
 }
 
