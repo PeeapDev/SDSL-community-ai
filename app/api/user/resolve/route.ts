@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       if (!selfUserId) return NextResponse.json({ error: "Missing x-user-id header" }, { status: 400 })
       const { data, error } = await supabase
         .from("user_directory")
-        .select("user_id, handle, phone, display_name")
+        .select("user_id, handle, phone, display_name, school_name, account_number, email")
         .eq("user_id", selfUserId)
         .maybeSingle()
       if (error) throw error
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     if (norm.kind === "handle") {
       const { data, error } = await supabase
         .from("user_directory")
-        .select("user_id, handle, phone, display_name")
+        .select("user_id, handle, phone, display_name, school_name, account_number, email")
         .ilike("handle", norm.value)
         .maybeSingle()
       if (error) throw error
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     if (norm.kind === "phone") {
       const { data, error } = await supabase
         .from("user_directory")
-        .select("user_id, handle, phone, display_name")
+        .select("user_id, handle, phone, display_name, school_name, account_number, email")
         .eq("phone", norm.value)
         .maybeSingle()
       if (error) throw error

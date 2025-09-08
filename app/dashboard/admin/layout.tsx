@@ -27,6 +27,8 @@ import {
 } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
+type Particle = { x:number;y:number;vx:number;vy:number;size:number;color:string }
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
@@ -48,8 +50,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
     resize()
 
-    type P = { x:number;y:number;vx:number;vy:number;size:number;color:string }
-    const particles: P[] = Array.from({ length: 80 }, () => ({
+    const particles: Particle[] = Array.from({ length: 80 }, () => ({
       x: Math.random()*canvas.clientWidth,
       y: Math.random()*canvas.clientHeight,
       vx: (Math.random()-0.5)*0.4,
@@ -80,19 +81,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize) }
   }, [])
 
-  // If on overview root, bypass the chrome but keep hooks called above
-  if (pathname === "/dashboard/admin") {
-    return (
-      <MockRoleGuard allow={["admin"]}>{children}</MockRoleGuard>
-    )
-  }
-
-  return (
-    <MockRoleGuard allow={["admin"]}>
-      <AdminRightRailProvider>
-        <div className="min-h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
-          <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-30" />
-          <div className="container mx-auto p-4 relative z-10">
+  // Build the admin chrome content
+  const chrome = (
+    <AdminRightRailProvider>
+      <div className="min-h-screen bg-gradient-to-br from-black to-slate-900 text-slate-100 relative overflow-hidden">
+        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full opacity-30" />
+        <div className="container mx-auto p-4 relative z-10">
           {/* Header (condensed) */}
           <header className="flex items-center justify-between py-4 border-b border-slate-700/50 mb-6">
             <div className="flex items-center space-x-2">
@@ -125,6 +119,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <NavItem icon={DollarSign} label="Deposit" href="/dashboard/admin/finance/deposit" active={pathname?.startsWith("/dashboard/admin/finance/deposit")} />
                       <NavItem icon={DollarSign} label="Withdraw" href="/dashboard/admin/finance/withdraw" active={pathname?.startsWith("/dashboard/admin/finance/withdraw")} />
                       <NavItem icon={Lock} label="Card" href="/dashboard/admin/finance/card" active={pathname?.startsWith("/dashboard/admin/finance/card")} />
+                      <NavItem icon={Lock} label="Card Products" href="/dashboard/admin/finance/card-products" active={pathname?.startsWith("/dashboard/admin/finance/card-products")} />
                       <NavItem icon={PieChart} label="Profit" href="/dashboard/admin/finance/profit" active={pathname?.startsWith("/dashboard/admin/finance/profit")} />
                       <NavItem icon={BarChart3} label="Transactions" href="/dashboard/admin/finance/transactions" active={pathname?.startsWith("/dashboard/admin/finance/transactions")} />
                     </NavGroup>
@@ -168,7 +163,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         </div>
-      </AdminRightRailProvider>
+      </div>
+    </AdminRightRailProvider>
+  )
+
+  // Single return for clarity
+  return (
+    <MockRoleGuard allow={["admin"]}>
+      {pathname === "/dashboard/admin" ? children : chrome}
     </MockRoleGuard>
   )
 }

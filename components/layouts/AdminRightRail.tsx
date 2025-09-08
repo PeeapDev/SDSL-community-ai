@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useMemo, useState } from "react"
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react"
 
 type Ctx = {
   content: React.ReactNode | null
@@ -12,7 +12,8 @@ const RightRailContext = createContext<Ctx | null>(null)
 
 export function AdminRightRailProvider({ children }: { children: React.ReactNode }) {
   const [content, setContent] = useState<React.ReactNode | null>(null)
-  const value = useMemo<Ctx>(() => ({ content, setContent, clear: () => setContent(null) }), [content])
+  const clear = useCallback(() => setContent(null), [])
+  const value = useMemo<Ctx>(() => ({ content, setContent, clear }), [content, clear])
   return <RightRailContext.Provider value={value}>{children}</RightRailContext.Provider>
 }
 
