@@ -1,8 +1,9 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import MockRoleGuard from "@/components/layouts/MockRoleGuard"
 import { AdminRightRailProvider, RightRailSlot } from "@/components/layouts/AdminRightRail"
 import { Button } from "@/components/ui/button"
@@ -22,20 +23,14 @@ import {
   Shield,
   Terminal,
   Wifi,
+  ChevronDown,
 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
-  // Do NOT wrap the root admin overview which already includes its own chrome
-  if (pathname === "/dashboard/admin") {
-    return (
-      <MockRoleGuard allow={["admin"]}>
-        {children}
-      </MockRoleGuard>
-    )
-  }
-
+  // Always call hooks unconditionally to preserve hook order
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useEffect(() => {
@@ -85,6 +80,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', onResize) }
   }, [])
 
+  // If on overview root, bypass the chrome but keep hooks called above
+  if (pathname === "/dashboard/admin") {
+    return (
+      <MockRoleGuard allow={["admin"]}>{children}</MockRoleGuard>
+    )
+  }
+
   return (
     <MockRoleGuard allow={["admin"]}>
       <AdminRightRailProvider>
@@ -99,7 +101,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <div className="hidden md:flex items-center space-x-2 bg-slate-800/50 rounded-full px-3 py-1 border border-slate-700/50">
               <Search className="h-4 w-4 text-slate-400" />
-              <input type="text" placeholder="Search..." className="bg-transparent border-none focus:outline-none text-sm w-48 placeholder:text-slate-500" />
+              <input type="text" placeholder="Search..." className="bg-transparent border-none focus:outline-none text-sm w-48 placeholder:text-slate-500 text-slate-200" />
             </div>
           </header>
 
@@ -111,7 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <nav className="space-y-2">
                     <NavItem icon={Terminal} label="Overview" href="/dashboard/admin" active={pathname === "/dashboard/admin"} />
 
-                    <NavGroup label="User Management">
+                    <NavGroup id="user_mgmt" label="User Management">
                       <NavItem icon={Database} label="Schools" href="/dashboard/admin/users/schools" active={pathname?.startsWith("/dashboard/admin/users/schools")} />
                       <NavItem icon={Database} label="Teachers" href="/dashboard/admin/users/teachers" active={pathname?.startsWith("/dashboard/admin/users/teachers")} />
                       <NavItem icon={Database} label="Students" href="/dashboard/admin/users/students" active={pathname?.startsWith("/dashboard/admin/users/students")} />
@@ -119,7 +121,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <NavItem icon={Database} label="Roles & Permissions" href="/dashboard/admin/users/roles" active={pathname?.startsWith("/dashboard/admin/users/roles")} />
                     </NavGroup>
 
-                    <NavGroup label="Finance">
+                    <NavGroup id="finance" label="Finance">
                       <NavItem icon={DollarSign} label="Deposit" href="/dashboard/admin/finance/deposit" active={pathname?.startsWith("/dashboard/admin/finance/deposit")} />
                       <NavItem icon={DollarSign} label="Withdraw" href="/dashboard/admin/finance/withdraw" active={pathname?.startsWith("/dashboard/admin/finance/withdraw")} />
                       <NavItem icon={Lock} label="Card" href="/dashboard/admin/finance/card" active={pathname?.startsWith("/dashboard/admin/finance/card")} />
@@ -127,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <NavItem icon={BarChart3} label="Transactions" href="/dashboard/admin/finance/transactions" active={pathname?.startsWith("/dashboard/admin/finance/transactions")} />
                     </NavGroup>
 
-                    <NavGroup label="Community">
+                    <NavGroup id="community" label="Community">
                       <NavItem icon={MessageSquare} label="Feed" href="/dashboard/admin/community/feed" active={pathname?.startsWith("/dashboard/admin/community/feed")} />
                       <NavItem icon={MessageSquare} label="Messages" href="/dashboard/admin/community/messages" active={pathname?.startsWith("/dashboard/admin/community/messages")} />
                       <NavItem icon={MessageSquare} label="Friends" href="/dashboard/admin/community/friends" active={pathname?.startsWith("/dashboard/admin/community/friends")} />
@@ -135,14 +137,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <NavItem icon={Shield} label="Moderation" href="/dashboard/admin/community/moderation" active={pathname?.startsWith("/dashboard/admin/community/moderation")} />
                     </NavGroup>
 
-                    <NavGroup label="AI Management">
+                    <NavGroup id="ai_mgmt" label="AI Management">
                       <NavItem icon={Radio} label="Prompt Templates" href="/dashboard/admin/ai/prompts" active={pathname?.startsWith("/dashboard/admin/ai/prompts")} />
                       <NavItem icon={Radio} label="Image Generation" href="/dashboard/admin/ai/images" active={pathname?.startsWith("/dashboard/admin/ai/images")} />
                       <NavItem icon={Radio} label="Agent Settings" href="/dashboard/admin/ai/agent" active={pathname?.startsWith("/dashboard/admin/ai/agent")} />
                       <NavItem icon={Radio} label="Usage Logs" href="/dashboard/admin/ai/logs" active={pathname?.startsWith("/dashboard/admin/ai/logs")} />
                     </NavGroup>
 
-                    <NavGroup label="System Settings">
+                    <NavGroup id="system" label="System Settings">
                       <NavItem icon={Settings} label="General" href="/dashboard/admin/settings/general" active={pathname?.startsWith("/dashboard/admin/settings/general")} />
                       <NavItem icon={Terminal} label="Billing" href="/dashboard/admin/settings/billing" active={pathname?.startsWith("/dashboard/admin/settings/billing")} />
                       <NavItem icon={Shield} label="Security" href="/dashboard/admin/settings/security" active={pathname?.startsWith("/dashboard/admin/settings/security")} />
@@ -166,7 +168,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
         </div>
-        </div>
       </AdminRightRailProvider>
     </MockRoleGuard>
   )
@@ -176,21 +177,54 @@ function NavItem({ icon: Icon, label, href, active }: { icon: any; label: string
   const btn = (
     <Button
       variant="ghost"
-      className={`w-full justify-start ${active ? "bg-slate-800/70 text-cyan-400" : "text-slate-400 hover:text-slate-100"}`}
+      className={`w-full justify-start max-w-full overflow-hidden text-ellipsis whitespace-nowrap ${active ? "bg-slate-800/70 text-cyan-400" : "text-slate-400 hover:text-slate-100"}`}
     >
       <Icon className="mr-2 h-4 w-4" />
-      {label}
+      <span className="truncate">{label}</span>
     </Button>
   )
   if (href) return <Link href={href}>{btn}</Link>
   return btn
 }
 
-function NavGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function NavGroup({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+  const storageKey = `admin_nav_group_${id}`
+  const [open, setOpen] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try {
+      const v = localStorage.getItem(storageKey)
+      return v ? v === '1' : true
+    } catch { return true }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, open ? '1' : '0') } catch {}
+  }, [open])
+
   return (
     <div className="space-y-1">
-      <div className="px-2 text-xs tracking-wide text-slate-500 mt-3">{label}</div>
-      <div className="pl-3 space-y-1">{children}</div>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-2 mt-3 text-xs tracking-wide text-slate-500 hover:text-slate-300"
+        aria-expanded={open}
+      >
+        <span className="select-none">{label}</span>
+        <ChevronDown className={`h-3 w-3 transition-transform ${open ? '' : '-rotate-90'}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="pl-3 space-y-1 overflow-hidden"
+          >
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
